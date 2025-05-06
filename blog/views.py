@@ -1,24 +1,17 @@
 from django.shortcuts import render, get_object_or_404
-from django.core.paginator import Paginator
+from django.views.generic import ListView
+from django.core.mail import send_mail
 from django.http import HttpRequest
 
 from .models import Post
+from .forms import EmailPostForm
 
 
-def post_list(request: HttpRequest):
-
-    post_list = Post.published.all()
-    paginator = Paginator(object_list=post_list, per_page=2)
-
-    page_number = request.GET.get("page", 1)
-    posts = paginator.get_page(page_number)
-    return render(
-        request=request,
-        template_name="blog/post/list.html",
-        context={
-            "posts": posts,
-        },
-    )
+class PostListView(ListView):
+    queryset = Post.published.all()
+    paginate_by = 2
+    context_object_name = "posts"
+    template_name = "blog/post/list.html"
 
 
 def post_detail(
@@ -41,5 +34,49 @@ def post_detail(
         template_name="blog/post/detail.html",
         context={
             "post": post,
+        },
+    )
+
+
+def post_share(request, post_id):
+    post = get_object_or_404(
+        Post,
+        id=post_id,
+        status=Post.Status.PUBLISHED,
+    )
+    sent = False
+
+    if request.method == "POST":
+        form = EmailPostForm(request.POST)
+
+        if form.is_valid():
+            cd = form.cleaned_data
+            post_url = request.build_absolute_uri(post.get_absolute_url)
+            subject = (
+                f"{cd['name']} ({cd['email']}) " f"recommends you read {post.title}"
+            )
+            message = (
+                f"Read {post.title} at {post_url}\n\n"
+                f"{cd['name']}'s comments: {cd['comments']}"
+            )
+            send_mail(
+                subject=subject,
+                message=message,
+                from_email=None,
+                recipient_list=[
+                    cd["to"],
+                ],
+            )
+            sent = True
+    else:
+        form = EmailPostForm()
+
+    return render(
+        request,
+        template_name="blog/post/share.html",
+        context={
+            "post": post,
+            "form": form,
+            "sent": sent,
         },
     )
