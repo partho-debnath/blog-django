@@ -10,7 +10,7 @@
         </p>
     {% else %}
         <h1>Share "{{ post.title }}" by e-mail</h1>
-        <form method="post">
+        <form method="post" action="{% url 'blog:share-post' post.id %}">
             {% csrf_token %}
             {{ form.as_p }}
             <input type="submit" value="Send e-mail">
