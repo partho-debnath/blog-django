@@ -2,13 +2,49 @@ from django.shortcuts import render, get_object_or_404
 from django.views.generic import ListView
 from django.core.mail import send_mail
 from django.http import HttpRequest
+from django.db.models import Count, Q
 from django.views.decorators.http import require_POST
+from django.core.paginator import (
+    Paginator,
+    PageNotAnInteger,
+    EmptyPage,
+)
+
+
+from taggit.models import Tag
 
 from .models import Post
 from .forms import (
     EmailPostForm,
     CommentModelForm,
 )
+
+
+def post_list(request, tag_slug=None):
+    post_list = Post.published.all()
+    tag = None
+    if tag_slug:
+        tag = get_object_or_404(Tag, slug=tag_slug)
+        post_list = post_list.filter(tags__in=[tag])
+    # pagination with 2 posts per page
+    paginator = Paginator(post_list, 2)
+    page_number = request.GET.get("page", 1)
+    try:
+        posts = paginator.page(page_number)
+    except PageNotAnInteger:
+        # if page_number is not an integer get the first page
+        posts = paginator.page(1)
+    except EmptyPage:
+        # if page_number is out of range get last page of results
+        posts = paginator.page(paginator.num_pages)
+    return render(
+        request=request,
+        template_name="blog/post/list.html",
+        context={
+            "posts": posts,
+            "tag": tag,
+        },
+    )
 
 
 class PostListView(ListView):
@@ -33,6 +69,17 @@ def post_detail(
         publish__day=day,
         status=Post.Status.PUBLISHED,
     )
+    similar_posts = (
+        Post.published.exclude(id=post.id)
+        .filter(
+            tags__id__in=post.tags.values_list(
+                "id",
+                flat=True,
+            ),
+        )
+        .alias(tag_count=Count("tags", distinct=True))
+        .order_by("-tag_count", "-publish")[:4]
+    )
     comment_form = CommentModelForm()
     comments = post.comments.filter(active=True)
     return render(
@@ -42,6 +89,7 @@ def post_detail(
             "post": post,
             "form": comment_form,
             "comments": comments,
+            "similar_posts": similar_posts,
         },
     )
 

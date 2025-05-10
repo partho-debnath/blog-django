@@ -17,13 +17,15 @@ class PostModelAdmin(admin.ModelAdmin):
         "created",
         "publish",
         "author",
+        "tags",
     ]
     search_fields = [
         "title",
         "body",
         "author__email",
+        "tags__name",
     ]
-    search_help_text = "Search Post based on title or body or author-email"
+    search_help_text = "Search Post based on title or body or author-email or tag-name"
     prepopulated_fields = {
         "slug": [
             "title",
