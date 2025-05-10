@@ -11,4 +11,5 @@ urlpatterns = [
         name="post_detail",
     ),
     path("<int:post_id>/share/", views.post_share, name="share-post"),
+    path("<int:post_id>/comment/", views.post_comment, name="comment-post"),
 ]

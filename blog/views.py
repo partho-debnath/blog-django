@@ -2,9 +2,13 @@ from django.shortcuts import render, get_object_or_404
 from django.views.generic import ListView
 from django.core.mail import send_mail
 from django.http import HttpRequest
+from django.views.decorators.http import require_POST
 
 from .models import Post
-from .forms import EmailPostForm
+from .forms import (
+    EmailPostForm,
+    CommentModelForm,
+)
 
 
 class PostListView(ListView):
@@ -29,11 +33,15 @@ def post_detail(
         publish__day=day,
         status=Post.Status.PUBLISHED,
     )
+    comment_form = CommentModelForm()
+    comments = post.comments.filter(active=True)
     return render(
         request=request,
         template_name="blog/post/detail.html",
         context={
             "post": post,
+            "form": comment_form,
+            "comments": comments,
         },
     )
 
@@ -78,5 +86,30 @@ def post_share(request, post_id):
             "post": post,
             "form": form,
             "sent": sent,
+        },
+    )
+
+
+@require_POST
+def post_comment(request, post_id):
+    post_obj = get_object_or_404(
+        Post,
+        status=Post.Status.PUBLISHED,
+        id=post_id,
+    )
+    comment_form = CommentModelForm(data=request.POST)
+    comment_obj = None
+    if comment_form.is_valid():
+        comment_obj = comment_form.save(commit=False)
+        comment_obj.post = post_obj
+        comment_obj.save()
+
+    return render(
+        request=request,
+        template_name="blog/post/comment.html",
+        context={
+            "form": comment_form,
+            "post": post_obj,
+            "comment": comment_obj,
         },
     )
