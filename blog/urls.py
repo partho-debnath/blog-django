@@ -1,5 +1,7 @@
 from django.urls import path
 
+from .feeds import LatestPostsFeed
+
 from . import views
 
 app_name = "blog"
@@ -34,4 +36,5 @@ urlpatterns = [
         view=views.post_comment,
         name="comment-post",
     ),
+    path("feed/", LatestPostsFeed(), name="post-feed"),
 ]
