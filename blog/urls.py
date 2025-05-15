@@ -36,5 +36,10 @@ urlpatterns = [
         view=views.post_comment,
         name="comment-post",
     ),
-    path("feed/", LatestPostsFeed(), name="post-feed"),
+    path(
+        route="search/",
+        view=views.post_search,
+        name="search-post",
+    ),
+    path(route="feed/", view=LatestPostsFeed(), name="post-feed"),
 ]

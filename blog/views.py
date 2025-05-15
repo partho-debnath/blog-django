@@ -1,8 +1,14 @@
 from django.shortcuts import render, get_object_or_404
+
+from django.contrib.postgres.search import (
+    SearchVector,
+    SearchQuery,
+    SearchRank,
+)
 from django.views.generic import ListView
 from django.core.mail import send_mail
 from django.http import HttpRequest
-from django.db.models import Count, Q
+from django.db.models import Count
 from django.views.decorators.http import require_POST
 from django.core.paginator import (
     Paginator,
@@ -17,6 +23,7 @@ from .models import Post
 from .forms import (
     EmailPostForm,
     CommentModelForm,
+    SearchForm,
 )
 
 
@@ -159,5 +166,34 @@ def post_comment(request, post_id):
             "form": comment_form,
             "post": post_obj,
             "comment": comment_obj,
+        },
+    )
+
+
+def post_search(request):
+    form = SearchForm()
+    query = None
+    results = []
+    if "query" in request.GET:
+        form = SearchForm(data=request.GET)
+        if form.is_valid():
+            query = form.cleaned_data["query"]
+            search_vector = SearchVector("title", "body")
+            search_query = SearchQuery(query)
+            results = (
+                Post.published.alias(
+                    search=search_vector,
+                    rank=SearchRank(search_vector, search_query),
+                )
+                .filter(search=search_query)
+                .order_by("-rank")
+            )
+    return render(
+        request=request,
+        template_name="blog/post/search.html",
+        context={
+            "form": form,
+            "query": query,
+            "results": results,
         },
     )
