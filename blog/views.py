@@ -192,13 +192,12 @@ def post_search(request):
             #     .order_by("-rank")
             # )
             results = (
-                Post.published.annotate(
+                Post.published.alias(
                     similarity=TrigramSimilarity("title", query),
                 )
                 .filter(similarity__gte=0.1)
                 .order_by("-similarity")
             )
-            print(results.values("id", "similarity"))
     return render(
         request=request,
         template_name="blog/post/search.html",
